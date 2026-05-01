@@ -21,7 +21,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // ★ 設定まとめ（ここを変更するだけで動作が変わります）
 // ============================================================
 const CONFIG = {
-  MODEL: "claude-sonnet-4-20250514",
+  MODEL: "claude-sonnet-4-5",
   MAX_TOKENS: 2000,
   TIMEOUT_MS: 30000,
 
