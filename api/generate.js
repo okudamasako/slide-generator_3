@@ -6,7 +6,7 @@ export const config = {
 };
 
 const CONFIG = {
-  MODEL: "claude-3-5-sonnet-20241022",
+  MODEL: "claude-3-5-sonnet-20240620",
   MAX_TOKENS: 2000,
   SLIDE_COUNT_OPTIONS: ["5〜8枚", "10〜12枚", "15〜20枚"],
   SYSTEM_PROMPT: `あなたはプレゼン資料構成の専門家です。

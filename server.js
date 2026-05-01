@@ -23,7 +23,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const CONFIG = {
   // 変更前: "claude-sonnet-4-5" は存在しないためエラーになります
   // 変更後: 最新のClaude 3.5 Sonnetの正式なモデル名に変更します
-  MODEL: "claude-3-5-sonnet-20241022",
+  MODEL: "claude-3-5-sonnet-20240620",
   // 変更前: 300 (検証用。わざと短くして10秒以内に生成を終わらせます)
   // 変更後: 2000 (元の十分な長さに戻します)
   MAX_TOKENS: 2000,
