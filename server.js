@@ -133,7 +133,8 @@ app.post("/api/generate", async (req, res) => {
     if (err.status === 529) {
       return res.status(503).json({ error: "Claude APIが混雑しています。しばらく待ってから再試行してください。" });
     }
-    res.status(500).json({ error: "生成中にエラーが発生しました。時間をおいて再試行してください。" });
+    // エラーの本当の原因がフロント画面でも分かるように詳細を含めます
+    res.status(500).json({ error: `生成中にエラーが発生しました。(詳細: ${err.message})` });
   }
 });
 
