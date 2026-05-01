@@ -24,6 +24,8 @@ const CONFIG = {
   // 変更前: "claude-sonnet-4-5" は存在しないためエラーになります
   // 変更後: 最新のClaude 3.5 Sonnetの正式なモデル名に変更します
   MODEL: "claude-3-5-sonnet-20241022",
+  // 変更前: 300 (検証用。わざと短くして10秒以内に生成を終わらせます)
+  // 変更後: 2000 (元の十分な長さに戻します)
   MAX_TOKENS: 2000,
   TIMEOUT_MS: 30000,
 
@@ -89,52 +91,52 @@ app.post("/api/generate", async (req, res) => {
     return res.status(400).json({ error: "スライド枚数の値が不正です" });
   }
 
-  // ---- Claude API呼び出し（タイムアウト付き） ----
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
+  // ---- ストリーミング通信 (SSE) の設定 ----
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Vercelなどでのバッファリングを無効化
 
   try {
-    const response = await anthropic.messages.create(
-      {
-        model: CONFIG.MODEL,
-        max_tokens: CONFIG.MAX_TOKENS,
-        system: CONFIG.SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: CONFIG.USER_PROMPT_TEMPLATE({ theme, target, goal, notes, slideCount }),
-          },
-        ],
-      },
-      { signal: controller.signal }
-    );
+    const stream = await anthropic.messages.stream({
+      model: CONFIG.MODEL,
+      max_tokens: CONFIG.MAX_TOKENS,
+      system: CONFIG.SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: CONFIG.USER_PROMPT_TEMPLATE({ theme, target, goal, notes, slideCount }),
+        },
+      ],
+    });
 
-    clearTimeout(timer);
+    // 1文字（数文字）生成されるたびにフロント画面へ送信
+    stream.on('text', (text) => {
+      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    });
 
-    const markdown = response.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("");
+    // 生成が完了したときの合図を送信
+    stream.on('end', () => {
+      res.write(`data: [DONE]\n\n`);
+      res.end();
+    });
 
-    res.json({ markdown });
+    // ストリーミング途中のエラー
+    stream.on('error', (err) => {
+      console.error("Stream error:", err);
+      res.write(`data: ${JSON.stringify({ error: `ストリーミングが途絶えました: ${err.message}` })}\n\n`);
+      res.end();
+    });
+
   } catch (err) {
-    clearTimeout(timer);
     console.error("Claude API Error:", err);
-
-    if (err.name === "AbortError") {
-      return res.status(504).json({ error: "生成がタイムアウトしました（30秒）。もう一度お試しください。" });
-    }
-    if (err.status === 401) {
-      return res.status(500).json({ error: "APIキーが無効です。管理者に連絡してください。" });
-    }
-    if (err.status === 429) {
-      return res.status(429).json({ error: "APIの利用上限に達しました。しばらく待ってから再試行してください。" });
-    }
-    if (err.status === 529) {
-      return res.status(503).json({ error: "Claude APIが混雑しています。しばらく待ってから再試行してください。" });
-    }
-    // エラーの本当の原因がフロント画面でも分かるように詳細を含めます
-    res.status(500).json({ error: `生成中にエラーが発生しました。(詳細: ${err.message})` });
+    let errMsg = `生成中にエラーが発生しました。(詳細: ${err.message})`;
+    if (err.status === 401) errMsg = "APIキーが無効です。管理者に連絡してください。";
+    if (err.status === 429) errMsg = "APIの利用上限に達しました。しばらく待ってから再試行してください。";
+    if (err.status === 529) errMsg = "Claude APIが混雑しています。しばらく待ってから再試行してください。";
+    
+    res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`);
+    res.end();
   }
 });
 

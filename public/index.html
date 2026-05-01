@@ -498,6 +498,7 @@
 
     setLoading(true);
     resultSection.classList.remove("show");
+    resultText.value = ""; // 前回の結果をクリア
 
     try {
       const res = await fetch("/api/generate", {
@@ -512,16 +513,56 @@
         }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        showError(data.error || "サーバーエラーが発生しました");
+      // APIからエラーJSONが返ってきた場合
+      if (!res.ok && res.headers.get("content-type")?.includes("application/json")) {
+        const errData = await res.json();
+        showError(errData.error || "サーバーエラーが発生しました");
+        setLoading(false);
         return;
       }
 
-      resultText.value = data.markdown;
+      // ストリーミングを受信する準備
       resultSection.classList.add("show");
       resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      // サーバーから少しずつ送られてくるデータを読み続けるループ
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break; // 通信終了
+
+        const chunk = decoder.decode(value, { stream: true });
+        
+        // サーバーからは "data: {...}\n\n" という形式で送られてくるため、行ごとに分割
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6);
+            if (dataStr.trim() === '[DONE]') {
+              break; // AIの生成が完了
+            }
+            try {
+              const data = JSON.parse(dataStr);
+              // もし途中でサーバーからエラーが送られてきた場合
+              if (data.error) {
+                showError(data.error);
+                break;
+              }
+              // 正常なテキストが送られてきた場合
+              if (data.text) {
+                resultText.value += data.text;
+                // 自動で一番下までスクロールさせる
+                resultText.scrollTop = resultText.scrollHeight;
+              }
+            } catch (e) {
+              // JSONパースエラー時は無視して次へ（途切れたchunk対策）
+            }
+          }
+        }
+      }
 
     } catch (e) {
       showError("ネットワークエラーが発生しました。接続を確認してください。");
