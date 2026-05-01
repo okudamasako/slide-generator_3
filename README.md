@@ -196,7 +196,7 @@ const CONFIG = {
 
 ```bash
 # ローカル
-curl http://localhost:3000/api/health
+curl http://localhost:5000/api/health
 
 # 本番（VercelのURLに置き換え）
 curl https://あなたのURL.vercel.app/api/health
@@ -218,7 +218,7 @@ curl https://あなたのURL.vercel.app/api/health
 ### 生成APIのテスト（curlコマンド）
 
 ```bash
-curl -X POST http://localhost:3000/api/generate \
+curl -X POST http://localhost:5000/api/generate \
   -H "Content-Type: application/json" \
   -d '{
     "theme": "新サービスのご提案",
