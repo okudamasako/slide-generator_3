@@ -21,7 +21,9 @@ app.use(express.static(path.join(__dirname, "public")));
 // ★ 設定まとめ（ここを変更するだけで動作が変わります）
 // ============================================================
 const CONFIG = {
-  MODEL: "claude-sonnet-4-5",
+  // 変更前: "claude-sonnet-4-5" は存在しないためエラーになります
+  // 変更後: 最新のClaude 3.5 Sonnetの正式なモデル名に変更します
+  MODEL: "claude-3-5-sonnet-20241022",
   MAX_TOKENS: 2000,
   TIMEOUT_MS: 30000,
 
@@ -156,11 +158,18 @@ app.get("*", (req, res) => {
 });
 
 // ------------------------------------------------------------
-// サーバー起動
+// サーバー起動 (ローカル用とVercel用で処理を分岐)
 // ------------------------------------------------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ サーバー起動: http://localhost:${PORT}`);
-  console.log(`   モデル: ${CONFIG.MODEL}`);
-  console.log(`   最大トークン: ${CONFIG.MAX_TOKENS}`);
-});
+// ローカル環境（Vercel以外）でのみポートを開いて待機します
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`✅ サーバー起動: http://localhost:${PORT}`);
+    console.log(`   モデル: ${CONFIG.MODEL}`);
+    console.log(`   最大トークン: ${CONFIG.MAX_TOKENS}`);
+  });
+}
+
+// Vercel のようなサーバーレス環境で Express アプリを動かすための設定
+// これがないと Vercel 上でコネクションエラーが発生しやすくなります
+module.exports = app;
