@@ -1,18 +1,21 @@
 {
   "version": 2,
-  "functions": {
-    "server.js": {
-      "maxDuration": 60
-    }
-  },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "server.js"
+      "source": "/api/generate",
+      "destination": "/api/generate"
     },
     {
-      "src": "/(.*)",
-      "dest": "server.js"
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/server.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/server.js"
     }
   ]
 }
